@@ -16,26 +16,33 @@
   opacity: 0.92;
 }
 
-/* 正在翻译的块：极轻的呼吸高亮，不抢注意力 */
+/* 正在翻译的块：一道柔光横扫掠过，块本身大部分时间干净，不持续染色。
+   --lt-glow 由 content.js 按该块「实际背景亮度」设定：
+   浅色网页用极淡暗色微光，深色网页用极淡白色微光，始终低存在感、不刺眼。
+   此处的默认值兜底浅色网页（多数情况）。 */
 .lt-loading {
   position: relative;
+  --lt-glow: rgba(0, 0, 0, 0.055);
   background-image: linear-gradient(
-    90deg,
-    rgba(107, 106, 114, 0.05),
-    rgba(107, 106, 114, 0.11),
-    rgba(107, 106, 114, 0.05)
+    100deg,
+    transparent 0%,
+    transparent 38%,
+    var(--lt-glow) 50%,
+    transparent 62%,
+    transparent 100%
   );
-  background-size: 200% 100%;
-  animation: lt-shimmer 1.4s ease-in-out infinite;
+  background-repeat: no-repeat;
+  background-size: 220% 100%;
+  animation: lt-sweep 1.6s ease-in-out infinite;
   border-radius: 4px;
 }
 
-@keyframes lt-shimmer {
+@keyframes lt-sweep {
   0% {
-    background-position: 200% 0;
+    background-position: 180% 0;
   }
   100% {
-    background-position: -200% 0;
+    background-position: -80% 0;
   }
 }
 

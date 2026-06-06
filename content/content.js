@@ -104,7 +104,40 @@
   }
 
   function setLoading(el, on) {
+    if (on) {
+      // 按该块的实际背景亮度设定扫光颜色：浅色背景用淡暗光、深色背景用淡白光，
+      // 始终是"比背景略不同的柔光"，既不会白叠白看不见，也不会在深色页刺眼。
+      const dark = isDarkBackground(el);
+      el.style.setProperty("--lt-glow", dark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.055)");
+    }
     el.classList.toggle("lt-loading", !!on);
+  }
+
+  // 向上寻找第一个不透明背景色，估算其亮度，判断是否为深色背景。
+  function isDarkBackground(el) {
+    let node = el;
+    while (node && node.nodeType === Node.ELEMENT_NODE) {
+      const bg = getComputedStyle(node).backgroundColor;
+      const rgba = parseRgb(bg);
+      if (rgba && rgba.a > 0.1) {
+        // 相对亮度（sRGB 近似），<0.5 视为深色。
+        const lum = (0.299 * rgba.r + 0.587 * rgba.g + 0.114 * rgba.b) / 255;
+        return lum < 0.5;
+      }
+      node = node.parentElement;
+    }
+    // 一路透明到根：以页面 body/html 背景或默认白底判断 → 视为浅色。
+    return false;
+  }
+
+  function parseRgb(str) {
+    if (!str) return null;
+    const m = str.match(/rgba?\(([^)]+)\)/);
+    if (!m) return null;
+    const parts = m[1].split(",").map((s) => parseFloat(s.trim()));
+    const [r, g, b, a = 1] = parts;
+    if ([r, g, b].some((n) => Number.isNaN(n))) return null;
+    return { r, g, b, a };
   }
   function setError(el, on) {
     el.classList.toggle("lt-error", !!on);
