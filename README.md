@@ -106,6 +106,17 @@ Content Script（页面内）         Background（service worker）
 
 原生 HTML / CSS / JavaScript + Manifest V3。**零依赖、零构建** —— clone 即用，代码透明可读。
 
+## 开发与测试
+
+产品本身零依赖；核心逻辑（DOM 块切分、内联标签保护、批处理重试）有回归测试，用 Node 内置测试运行器 + jsdom（仅开发期依赖，不打包进扩展）：
+
+```bash
+npm install   # 安装 jsdom（devDependency）
+npm test      # 运行全部回归测试
+```
+
+改动 `lib/` 下的切分/翻译/批处理逻辑后，请先跑 `npm test`，避免回退已修复的边界（链接内标题、游离栏目标签、图文混排、译文不错位、失败重试等）。
+
 ## License
 
 [MIT](./LICENSE)

@@ -1,0 +1,15 @@
+{
+  "name": "lucid-translate",
+  "version": "1.0.0",
+  "description": "极简一键整页网页翻译 Chrome 插件 · 自带你的 LLM API Key",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "//": "产品本身零依赖、零构建（原生 JS + Manifest V3）。jsdom 仅用于开发期的回归测试，不打包进扩展。",
+  "devDependencies": {
+    "jsdom": "^26.0.0"
+  },
+  "license": "MIT"
+}
