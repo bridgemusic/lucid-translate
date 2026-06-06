@@ -36,7 +36,7 @@
       "css": ["content/content.css"]
     }
   ],
-  "permissions": ["storage", "activeTab", "scripting"],
+  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
   "host_permissions": [
     "https://api.openai.com/*",
     "https://api.anthropic.com/*",

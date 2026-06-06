@@ -185,7 +185,9 @@
       if (!STATE.active) return;
       scanAndObserve(document.body);
     });
+    removeToast(); // 已进入翻译，撤掉自动提示弹窗（若有）
     notifyProgress();
+    pushMenuState();
   }
 
   // —— 还原原文 ——
@@ -211,6 +213,7 @@
     queue = null;
     observers = null;
     notifyProgress();
+    pushMenuState();
   }
 
   // —— 进度上报（popup 打开时监听）——
@@ -226,10 +229,155 @@
       .catch(() => {}); // popup 未打开时忽略
   }
 
+  // —— 把当前激活状态推给 background，用于同步右键菜单文案（翻译此页 / 还原原文）——
+  function pushMenuState() {
+    chrome.runtime.sendMessage({ type: "menuState", active: STATE.active }).catch(() => {});
+  }
+
   // —— 供 popup 检测语言用：取样页面可见文本 ——
   function sampleText() {
     const text = (document.body && document.body.innerText) || "";
     return text.replace(/\s+/g, " ").trim().slice(0, 1000);
+  }
+
+  // ============================================================
+  //  自动检测提示弹窗（Shadow DOM 隔离，不污染/不被页面 CSS 污染）
+  // ============================================================
+  let toastHost = null;
+  let toastTimer = null;
+
+  // 启动后稍延迟取样，请求 background 决策是否弹窗。
+  function maybeOfferTranslation() {
+    if (STATE.active) return;
+    setTimeout(() => {
+      if (STATE.active || toastHost) return;
+      const sample = sampleText();
+      if (!sample) return;
+      chrome.runtime
+        .sendMessage({ type: "autoOffer", sample, hostname: location.hostname })
+        .then((resp) => {
+          if (resp && resp.ok && resp.offer && !STATE.active && !toastHost) {
+            // 记下用于翻译的设置，点击「翻译」时直接用。
+            STATE.offerSource = resp.sourceLang;
+            STATE.offerTarget = resp.targetLang;
+            STATE.offerMode = resp.displayMode;
+            showToast(resp.langName || "");
+          }
+        })
+        .catch(() => {});
+    }, 600); // 等 SPA 首屏渲染
+  }
+
+  function showToast(langName) {
+    removeToast();
+    const host = document.createElement("div");
+    host.dataset.ltInjected = ""; // dom-walker 会跳过它
+    host.style.cssText =
+      "all:initial; position:fixed; top:16px; right:16px; z-index:2147483647;";
+    const shadow = host.attachShadow({ mode: "open" });
+    shadow.innerHTML = toastMarkup(langName);
+    (document.documentElement || document.body).appendChild(host);
+    toastHost = host;
+
+    // 进场动画
+    const card = shadow.querySelector(".lt-toast");
+    requestAnimationFrame(() => card && card.classList.add("show"));
+
+    shadow.querySelector(".lt-toast-go").addEventListener("click", () => {
+      removeToast();
+      startTranslation({
+        sourceLang: STATE.offerSource,
+        targetLang: STATE.offerTarget,
+        displayMode: STATE.offerMode,
+      });
+    });
+    shadow.querySelector(".lt-toast-close").addEventListener("click", () => {
+      removeToast();
+      // 用户主动关闭 → 该站永久不再自动提示。
+      chrome.runtime
+        .sendMessage({ type: "dismissOffer", hostname: location.hostname })
+        .catch(() => {});
+    });
+
+    // ~8 秒无操作自动淡出（不写黑名单，下次仍礼貌再问）。
+    toastTimer = setTimeout(() => fadeOutToast(), 8000);
+  }
+
+  function fadeOutToast() {
+    if (!toastHost) return;
+    const card = toastHost.shadowRoot && toastHost.shadowRoot.querySelector(".lt-toast");
+    if (card) {
+      card.classList.remove("show");
+      setTimeout(removeToast, 260);
+    } else {
+      removeToast();
+    }
+  }
+
+  function removeToast() {
+    if (toastTimer) {
+      clearTimeout(toastTimer);
+      toastTimer = null;
+    }
+    if (toastHost && toastHost.parentNode) toastHost.parentNode.removeChild(toastHost);
+    toastHost = null;
+  }
+
+  function toastMarkup(langName) {
+    const hint = langName ? `检测到${langName}页面` : "检测到可翻译的页面";
+    return `
+      <style>
+        :host { all: initial; }
+        .lt-toast {
+          font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+          display: flex; align-items: center; gap: 10px;
+          padding: 11px 12px 11px 14px;
+          background: rgba(255,255,255,0.82);
+          -webkit-backdrop-filter: saturate(160%) blur(28px);
+          backdrop-filter: saturate(160%) blur(28px);
+          border: 1px solid rgba(40,38,50,0.1);
+          border-radius: 14px;
+          box-shadow: 0 1px 2px rgba(40,38,50,0.06), 0 10px 34px rgba(40,38,50,0.16);
+          color: #25242a;
+          opacity: 0; transform: translateY(-8px) scale(0.98);
+          transition: opacity .26s ease, transform .26s cubic-bezier(.2,.7,.3,1);
+        }
+        .lt-toast.show { opacity: 1; transform: translateY(0) scale(1); }
+        .lt-logo {
+          flex: 0 0 auto; width: 24px; height: 24px; border-radius: 7px;
+          display: grid; place-items: center; color: #fff; font-size: 13px; font-weight: 600;
+          background: linear-gradient(150deg, #7a7984, #56555d);
+          box-shadow: inset 0 0.5px 0 rgba(255,255,255,0.25);
+        }
+        .lt-text { font-size: 13px; line-height: 1.25; white-space: nowrap; }
+        .lt-toast-go {
+          flex: 0 0 auto; font-family: inherit; font-size: 13px; font-weight: 600;
+          color: #fff; border: none; cursor: pointer; padding: 7px 12px; border-radius: 9px;
+          background: linear-gradient(180deg, #76757f, #6b6a72);
+          box-shadow: inset 0 0.5px 0 rgba(255,255,255,0.18);
+        }
+        .lt-toast-go:hover { filter: brightness(1.07); }
+        .lt-toast-close {
+          flex: 0 0 auto; width: 24px; height: 24px; border: none; background: transparent;
+          color: #8a8891; cursor: pointer; border-radius: 7px; font-size: 16px; line-height: 1;
+        }
+        .lt-toast-close:hover { background: rgba(40,38,50,0.06); color: #25242a; }
+        @media (prefers-color-scheme: dark) {
+          .lt-toast {
+            background: rgba(44,43,50,0.78); color: #f2f1f4;
+            border-color: rgba(255,255,255,0.12);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 12px 40px rgba(0,0,0,0.5);
+          }
+          .lt-toast-close { color: #918f9a; }
+          .lt-toast-close:hover { background: rgba(255,255,255,0.08); color: #f2f1f4; }
+        }
+      </style>
+      <div class="lt-toast" role="alert">
+        <span class="lt-logo">译</span>
+        <span class="lt-text">${hint}</span>
+        <button class="lt-toast-go">翻译</button>
+        <button class="lt-toast-close" title="不再提示此网站" aria-label="关闭">&times;</button>
+      </div>`;
   }
 
   // —— popup 命令入口 ——
@@ -259,8 +407,17 @@
         restore();
         sendResponse({ ok: true });
         return;
+      case "toggle":
+        // 右键菜单触发：按自身真实状态翻转（动作始终正确，与菜单文案无关）。
+        if (STATE.active) restore();
+        else startTranslation(msg.settings || {});
+        sendResponse({ ok: true, active: STATE.active });
+        return;
       default:
         return;
     }
   });
+
+  // 启动：请求 background 决策是否自动弹窗提示。
+  maybeOfferTranslation();
 })();

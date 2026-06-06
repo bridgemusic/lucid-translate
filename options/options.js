@@ -1,5 +1,11 @@
 // 设置页逻辑：选服务商即自动配置地址/模型，用户只需粘 Key。即时保存。
-import { getSettings, saveSettings, SERVICES, getService } from "../lib/storage.js";
+import {
+  getSettings,
+  saveSettings,
+  clearBlocklist,
+  SERVICES,
+  getService,
+} from "../lib/storage.js";
 
 const $ = (id) => document.getElementById(id);
 let settings = null;
@@ -11,7 +17,12 @@ async function init() {
   populateServices();
   renderService();
   renderMode();
+  renderSmartHints();
   bindEvents();
+}
+
+function renderSmartHints() {
+  $("autoDetect").checked = settings.autoDetect !== false;
 }
 
 function populateServices() {
@@ -95,6 +106,21 @@ function bindEvents() {
       await saveSettings({ displayMode: r.value });
       flashSaved();
     });
+  });
+
+  // 自动提示开关
+  $("autoDetect").addEventListener("change", async (e) => {
+    settings.autoDetect = e.target.checked;
+    await saveSettings({ autoDetect: settings.autoDetect });
+    flashSaved();
+  });
+
+  // 恢复所有网站的提示（清空黑名单）
+  $("clearBlocklist").addEventListener("click", async () => {
+    await clearBlocklist();
+    const r = $("clearResult");
+    r.textContent = "已恢复，所有网站将重新提示";
+    setTimeout(() => (r.textContent = ""), 2400);
   });
 
   $("testBtn").addEventListener("click", testConnection);

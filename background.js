@@ -2,7 +2,10 @@
 // API key 只在这里读取，绝不下发到页面世界（content script）。
 
 import { translate, testConnection } from "./lib/providers.js";
-import { getActiveProviderConfig, getSettings } from "./lib/storage.js";
+import { getActiveProviderConfig, getSettings, addToBlocklist, hostInList } from "./lib/storage.js";
+import { normalizeDetected, displayName } from "./lib/languages.js";
+
+const MENU_ID = "lt-toggle";
 
 // 消息路由。返回 true 以保持 sendResponse 异步可用。
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -20,6 +23,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     case "detectLanguage":
       handleDetectLanguage(msg, sendResponse);
       return true;
+
+    case "autoOffer":
+      handleAutoOffer(msg, sendResponse);
+      return true;
+
+    case "dismissOffer":
+      addToBlocklist(msg.hostname).finally(() => sendResponse({ ok: true }));
+      return true;
+
+    case "menuState":
+      updateMenuTitle(msg.active);
+      sendResponse({ ok: true });
+      return;
 
     default:
       return;
@@ -78,11 +94,147 @@ async function handleDetectLanguage(msg, sendResponse) {
   }
 }
 
-// 首次安装打开设置页，引导用户填 key（无 key 则无法翻译）。
-chrome.runtime.onInstalled.addListener(async (details) => {
+// —— 自动弹窗决策 ——
+// 纯决策函数（无 chrome 依赖，便于测试）：给定检测结果与设置，返回是否该弹窗。
+export function decideOffer({ detectedLang, percentage, settings, hasApiKey, hostname }) {
+  if (!settings || !settings.autoDetect) return { offer: false };
+  if (!hasApiKey) return { offer: false }; // 没 key 弹了也白弹
+  if (hostInList(hostname, settings.blocklist)) return { offer: false };
+  const norm = normalizeDetected(detectedLang);
+  if (!norm || norm !== settings.sourceLang) return { offer: false };
+  if ((percentage || 0) < 50) return { offer: false };
+  return {
+    offer: true,
+    sourceLang: settings.sourceLang,
+    targetLang: settings.targetLang,
+    displayMode: settings.displayMode,
+  };
+}
+
+async function handleAutoOffer(msg, sendResponse) {
+  try {
+    const settings = await getSettings();
+    // 提前短路：自动检测关 / 在黑名单 → 不必调检测。
+    if (!settings.autoDetect || hostInList(msg.hostname, settings.blocklist)) {
+      sendResponse({ ok: true, offer: false });
+      return;
+    }
+    const cfg = await getActiveProviderConfig();
+    const sample = (msg.sample || "").slice(0, 1000);
+    let detectedLang = null;
+    let percentage = 0;
+    if (sample.trim()) {
+      const result = await chrome.i18n.detectLanguage(sample);
+      const top =
+        result && result.languages && result.languages.length ? result.languages[0] : null;
+      if (top) {
+        detectedLang = top.language;
+        percentage = top.percentage;
+      }
+    }
+    const decision = decideOffer({
+      detectedLang,
+      percentage,
+      settings,
+      hasApiKey: !!cfg.apiKey,
+      hostname: msg.hostname,
+    });
+    sendResponse({
+      ok: true,
+      ...decision,
+      langName: decision.offer ? displayName(settings.sourceLang) : "",
+    });
+  } catch (err) {
+    sendResponse({ ok: false, error: String(err && err.message ? err.message : err) });
+  }
+}
+
+// —— 右键菜单 ——
+function createMenu() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: MENU_ID,
+      title: "翻译此页",
+      contexts: ["page", "selection"],
+    });
+  });
+}
+
+function updateMenuTitle(active) {
+  chrome.contextMenus.update(MENU_ID, { title: active ? "还原原文" : "翻译此页" }, () => {
+    void chrome.runtime.lastError; // 菜单可能尚未创建，忽略
+  });
+}
+
+// 点击菜单：始终发 toggle 给 content，由 content 按真实状态翻转。
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId !== MENU_ID || !tab || tab.id == null) return;
+  const settings = await getSettings();
+  const payload = {
+    type: "toggle",
+    settings: {
+      sourceLang: settings.sourceLang,
+      targetLang: settings.targetLang,
+      displayMode: settings.displayMode,
+    },
+  };
+  const sent = await sendToTab(tab.id, payload);
+  if (!sent) {
+    // content 未注入（页面在插件加载前已打开）→ 注入后重试。
+    const injected = await ensureInjected(tab.id, tab.url);
+    if (injected) await sendToTab(tab.id, payload);
+  }
+});
+
+// —— 切 tab / 导航时同步菜单文案 ——
+chrome.tabs.onActivated.addListener(({ tabId }) => syncMenuForTab(tabId));
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === "complete" && tab && tab.active) syncMenuForTab(tabId);
+});
+
+async function syncMenuForTab(tabId) {
+  const resp = await sendToTab(tabId, { type: "getStatus" });
+  updateMenuTitle(!!(resp && resp.active)); // 未注入 → resp 为 null → 置"翻译此页"
+}
+
+// —— 向 tab 发消息（content 未注入时返回 null）——
+function sendToTab(tabId, msg) {
+  return new Promise((resolve) => {
+    chrome.tabs.sendMessage(tabId, msg, (resp) => {
+      if (chrome.runtime.lastError) return resolve(null);
+      resolve(resp || null);
+    });
+  });
+}
+
+// —— 注入兜底：复刻 manifest 的 content_scripts 注入序列 ——
+const RESTRICTED = /^(chrome|chrome-extension|edge|about|view-source):|^https:\/\/chrome(webstore)?\.google\.com|^https:\/\/chromewebstore\.google\.com/;
+async function ensureInjected(tabId, url) {
+  if (url && RESTRICTED.test(url)) return false;
+  try {
+    await chrome.scripting.insertCSS({ target: { tabId }, files: ["content/content.css"] });
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: [
+        "lib/inline-tags.js",
+        "lib/dom-walker.js",
+        "lib/batch-queue.js",
+        "lib/observers.js",
+        "content/content.js",
+      ],
+    });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+// 首次安装打开设置页 + 建右键菜单。SW 重启时菜单也需重建。
+chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === "install") {
     chrome.runtime.openOptionsPage();
   }
-  // 占位：未来可在此做配置迁移。
-  void getSettings;
+  createMenu();
 });
+// SW 冷启动（非安装）时也确保菜单存在。
+createMenu();
