@@ -1,0 +1,279 @@
+/* 暖石墨主面板：低饱和、浅景深、微弱毛玻璃叠加。 */
+
+:root {
+  /* 暖调石墨强调色：带一丝紫灰，去饱和、不抢眼 */
+  --accent: #6b6a72;
+  --accent-hover: #56555d;
+  --accent-soft: rgba(107, 106, 114, 0.1);
+  --accent-tint: rgba(107, 106, 114, 0.06);
+
+  /* 暖白底，略带一点点石灰调 */
+  --bg: #f4f3f1;
+  /* 半透明面板 + 毛玻璃，叠出浅浅的景深 */
+  --panel: rgba(255, 255, 255, 0.72);
+  --panel-solid: #fbfbfa;
+  --glass-blur: saturate(150%) blur(30px);
+
+  --text: #25242a;
+  --text-dim: #8a8891;
+  --border: rgba(40, 38, 50, 0.08);
+  --border-strong: rgba(40, 38, 50, 0.14);
+  --radius: 15px;
+  /* 更细腻的双层阴影：贴近表面的硬阴影 + 远处柔光 */
+  --shadow: 0 0.5px 1px rgba(40, 38, 50, 0.04), 0 6px 20px rgba(40, 38, 50, 0.07);
+
+  --ok: #5c8a6a;
+  --warn: #a98548;
+  --error: #b06a63;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #a9a7b3;
+    --accent-hover: #c0bec9;
+    --accent-soft: rgba(169, 167, 179, 0.16);
+    --accent-tint: rgba(169, 167, 179, 0.08);
+
+    /* 墨色玻璃：近黑背景 + 半透明深灰玻璃面板 */
+    --bg: #131316;
+    --panel: rgba(44, 43, 50, 0.66);
+    --panel-solid: #26252b;
+    --glass-blur: saturate(140%) blur(30px);
+
+    --text: #f2f1f4;
+    --text-dim: #918f9a;
+    --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --shadow: 0 0.5px 1px rgba(0, 0, 0, 0.4), 0 8px 28px rgba(0, 0, 0, 0.5);
+
+    --ok: #7faf8b;
+    --warn: #c4a06a;
+    --error: #cf8a82;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 320px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "PingFang SC",
+    sans-serif;
+  /* 底层加一层极淡的暖色径向光晕，让毛玻璃有东西可叠 */
+  background-color: var(--bg);
+  background-image: radial-gradient(
+      120% 80% at 80% -10%,
+      var(--accent-tint),
+      transparent 60%
+    ),
+    radial-gradient(100% 70% at -10% 110%, rgba(120, 116, 130, 0.05), transparent 55%);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.panel {
+  padding: 18px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.logo {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  /* 低饱和暖石墨渐变 + 内高光，金属质感而非鲜艳塑料感 */
+  background: linear-gradient(150deg, #7a7984, #56555d);
+  color: #fff;
+  border-radius: 9px;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.25), 0 1px 2px rgba(40, 38, 50, 0.18);
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.icon-btn:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.detect-hint {
+  background: var(--accent-soft);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12.5px;
+  padding: 8px 12px;
+  border-radius: 11px;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+.lang-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.lang-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.lang-field label {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  margin-bottom: 5px;
+  padding-left: 2px;
+}
+
+select {
+  width: 100%;
+  padding: 9px 10px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: var(--text);
+  background-color: var(--panel);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8891' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+select:hover {
+  border-color: var(--border-strong);
+}
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.arrow {
+  color: var(--text-dim);
+  font-size: 15px;
+  padding-bottom: 9px;
+}
+
+.action-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  /* 暖石墨渐变 + 内高光，质感更深 */
+  background: linear-gradient(180deg, #76757f, var(--accent));
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.18), 0 1px 2px rgba(40, 38, 50, 0.16);
+  transition: filter 0.15s, transform 0.08s, box-shadow 0.15s;
+}
+.action-btn:hover {
+  filter: brightness(1.06);
+}
+.action-btn:active {
+  transform: scale(0.985);
+}
+.action-btn.restore {
+  background: var(--panel);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow);
+}
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  filter: none;
+}
+
+.progress {
+  margin-top: 14px;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #8a8891, var(--accent));
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+.progress-text {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  margin-top: 6px;
+  text-align: center;
+}
+
+.banner {
+  margin-top: 14px;
+  font-size: 12.5px;
+  padding: 9px 12px;
+  border-radius: 11px;
+  text-align: center;
+  border: 1px solid var(--border);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.banner.warn {
+  background: rgba(169, 133, 72, 0.1);
+  color: var(--warn);
+}
+.banner.error {
+  background: rgba(176, 106, 99, 0.1);
+  color: var(--error);
+}
+
+.hidden {
+  display: none !important;
+}

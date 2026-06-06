@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="options.css" />
+    <title>Lucid Translate 设置</title>
+  </head>
+  <body>
+    <main class="wrap">
+      <header class="page-header">
+        <div class="brand">
+          <span class="logo">译</span>
+          <h1>Lucid Translate</h1>
+        </div>
+        <p class="subtitle">极简、稳定的一键整页翻译 · 自带你的 API Key</p>
+      </header>
+
+      <!-- 服务商选择 -->
+      <section class="card">
+        <h2>翻译服务</h2>
+        <p class="hint">选一家服务，填入你自己的 API Key。地址和模型会自动配置好。</p>
+
+        <div class="field">
+          <label for="serviceSelect">服务商</label>
+          <select id="serviceSelect"></select>
+          <p class="hint" id="serviceHint"></p>
+        </div>
+
+        <div class="field">
+          <label for="apiKey">API Key</label>
+          <div class="key-row">
+            <input id="apiKey" type="password" placeholder="粘贴你的 API Key" autocomplete="off" />
+            <button id="toggleKey" class="ghost-btn" type="button">显示</button>
+          </div>
+          <p class="hint">
+            <a id="keyLink" href="#" target="_blank" rel="noopener" class="hidden">→ 前往该服务官网获取 API Key</a>
+          </p>
+        </div>
+
+        <div class="field">
+          <label for="model">模型</label>
+          <input id="model" type="text" placeholder="模型名称" />
+          <p class="hint" id="modelHint">已自动填入推荐模型，一般无需修改。</p>
+        </div>
+
+        <!-- 自定义 / 高级：仅在需要时显示 Base URL -->
+        <div class="field" id="baseUrlField">
+          <label for="baseUrl">接口地址 Base URL</label>
+          <input id="baseUrl" type="text" placeholder="https://..." />
+          <p class="hint">任何兼容 OpenAI 接口的服务都可填这里。</p>
+        </div>
+
+        <div class="test-row">
+          <button id="testBtn" class="primary-btn">测试连接</button>
+          <span id="testResult" class="test-result"></span>
+        </div>
+      </section>
+
+      <!-- 呈现方式 -->
+      <section class="card">
+        <h2>译文呈现</h2>
+        <div class="radio-group" id="modeGroup">
+          <label class="radio-card">
+            <input type="radio" name="mode" value="bilingual" />
+            <div class="radio-body">
+              <span class="radio-title">双语对照</span>
+              <span class="radio-desc">译文显示在原文下方，最可靠，可随时对照原文</span>
+            </div>
+          </label>
+          <label class="radio-card">
+            <input type="radio" name="mode" value="replace" />
+            <div class="radio-body">
+              <span class="radio-title">原地替换</span>
+              <span class="radio-desc">直接替换原文，页面像母语网站一样干净</span>
+            </div>
+          </label>
+        </div>
+      </section>
+
+      <p class="saved-indicator" id="savedIndicator">已自动保存</p>
+    </main>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

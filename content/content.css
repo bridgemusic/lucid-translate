@@ -1,0 +1,53 @@
+/* 注入到页面的译文样式。克制、低存在感，让译文「看起来是译文」但不破坏阅读。 */
+
+/* 双语对照模式下插入的译文块 */
+.lt-translation {
+  display: block;
+  margin: 0.15em 0 0.4em 0;
+  padding: 0;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  /* 轻微区分：左侧细线 + 略低饱和，提示这是译文而非原文。
+     用去饱和的暖石墨色，低存在感，不与页面原有强调色冲突。 */
+  border-left: 2px solid rgba(107, 106, 114, 0.3);
+  padding-left: 0.6em;
+  opacity: 0.92;
+}
+
+/* 正在翻译的块：极轻的呼吸高亮，不抢注意力 */
+.lt-loading {
+  position: relative;
+  background-image: linear-gradient(
+    90deg,
+    rgba(107, 106, 114, 0.05),
+    rgba(107, 106, 114, 0.11),
+    rgba(107, 106, 114, 0.05)
+  );
+  background-size: 200% 100%;
+  animation: lt-shimmer 1.4s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+@keyframes lt-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* 翻译失败的块：淡红虚线下划线 + 可点击重试 */
+.lt-error {
+  text-decoration: underline dotted rgba(255, 59, 48, 0.6);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lt-loading {
+    animation: none;
+  }
+}

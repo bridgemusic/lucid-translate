@@ -1,0 +1,340 @@
+/* 设置页：暖石墨低饱和 + 微弱毛玻璃分组卡片，居中窄栏。 */
+
+:root {
+  --accent: #6b6a72;
+  --accent-hover: #56555d;
+  --accent-soft: rgba(107, 106, 114, 0.1);
+  --accent-tint: rgba(107, 106, 114, 0.06);
+
+  --bg: #f4f3f1;
+  --panel: rgba(255, 255, 255, 0.66);
+  --panel-solid: #fbfbfa;
+  --field-bg: rgba(40, 38, 50, 0.035);
+  --glass-blur: saturate(150%) blur(30px);
+
+  --text: #25242a;
+  --text-dim: #8a8891;
+  --border: rgba(40, 38, 50, 0.08);
+  --border-strong: rgba(40, 38, 50, 0.14);
+  --radius: 18px;
+  --shadow: 0 0.5px 1px rgba(40, 38, 50, 0.04), 0 10px 34px rgba(40, 38, 50, 0.07);
+
+  --ok: #5c8a6a;
+  --error: #b06a63;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #a9a7b3;
+    --accent-hover: #c0bec9;
+    --accent-soft: rgba(169, 167, 179, 0.16);
+    --accent-tint: rgba(169, 167, 179, 0.08);
+
+    --bg: #0e0e10;
+    --panel: rgba(44, 43, 50, 0.6);
+    --panel-solid: #26252b;
+    --field-bg: rgba(255, 255, 255, 0.05);
+    --glass-blur: saturate(140%) blur(30px);
+
+    --text: #f2f1f4;
+    --text-dim: #918f9a;
+    --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --shadow: 0 0.5px 1px rgba(0, 0, 0, 0.4), 0 12px 40px rgba(0, 0, 0, 0.5);
+
+    --ok: #7faf8b;
+    --error: #cf8a82;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "PingFang SC",
+    sans-serif;
+  /* 暖色径向光晕背景，给毛玻璃卡片提供叠加层次 */
+  background-color: var(--bg);
+  background-image: radial-gradient(
+      80% 50% at 85% -5%,
+      var(--accent-tint),
+      transparent 55%
+    ),
+    radial-gradient(70% 50% at 0% 100%, rgba(120, 116, 130, 0.05), transparent 55%);
+  background-attachment: fixed;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  padding: 48px 20px 80px;
+}
+
+.wrap {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.logo {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(150deg, #7a7984, #56555d);
+  color: #fff;
+  border-radius: 12px;
+  font-size: 21px;
+  font-weight: 600;
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.25), 0 2px 6px rgba(40, 38, 50, 0.18);
+}
+.page-header h1 {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.subtitle {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.card {
+  background-color: var(--panel);
+  /* 微弱毛玻璃叠加，叠出浅景深 */
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 22px;
+  margin-bottom: 18px;
+}
+.card h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.hint {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+/* 下拉选择（服务商） */
+select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text);
+  background-color: var(--field-bg);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8891' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+select:hover {
+  border-color: var(--border-strong);
+}
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.field {
+  margin-bottom: 16px;
+}
+.field:last-child {
+  margin-bottom: 0;
+}
+.field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 7px;
+}
+
+input[type="text"],
+input[type="password"] {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--field-bg);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input:hover {
+  border-color: var(--border-strong);
+}
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.key-row {
+  display: flex;
+  gap: 8px;
+}
+.key-row input {
+  flex: 1;
+}
+
+.ghost-btn {
+  padding: 0 14px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-dim);
+  background: var(--field-bg);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+}
+.ghost-btn:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.advanced {
+  margin-top: 16px;
+}
+.advanced summary {
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 0;
+}
+.advanced[open] summary {
+  margin-bottom: 12px;
+}
+
+.test-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+.primary-btn {
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  background: linear-gradient(180deg, #76757f, var(--accent));
+  border: none;
+  border-radius: 11px;
+  cursor: pointer;
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.18), 0 1px 2px rgba(40, 38, 50, 0.16);
+  transition: filter 0.15s;
+}
+.primary-btn:hover {
+  filter: brightness(1.06);
+}
+.primary-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  filter: none;
+}
+.test-result {
+  font-size: 13px;
+}
+.test-result.ok {
+  color: var(--ok);
+}
+.test-result.fail {
+  color: var(--error);
+}
+.test-result.testing {
+  color: var(--text-dim);
+}
+
+/* 单选卡片 */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+.radio-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--field-bg);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.radio-card:hover {
+  border-color: var(--border-strong);
+}
+.radio-card:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.radio-card input {
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+.radio-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.radio-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+.radio-desc {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.saved-indicator {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.saved-indicator.show {
+  opacity: 1;
+}
+
+.hint a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.hint a:hover {
+  text-decoration: underline;
+}
+
+.hidden {
+  display: none !important;
+}

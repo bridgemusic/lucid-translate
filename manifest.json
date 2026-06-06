@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "Lucid Translate",
+  "version": "1.0",
+  "description": "一键原地翻译整页网页。极简、稳定、优雅 —— 自带你的 LLM API key。",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "options_page": "options/options.html",
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "all_frames": false,
+      "run_at": "document_idle",
+      "js": [
+        "lib/inline-tags.js",
+        "lib/dom-walker.js",
+        "lib/batch-queue.js",
+        "lib/observers.js",
+        "content/content.js"
+      ],
+      "css": ["content/content.css"]
+    }
+  ],
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://api.openai.com/*",
+    "https://api.anthropic.com/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://api.deepseek.com/*",
+    "https://api.moonshot.cn/*",
+    "https://open.bigmodel.cn/*",
+    "https://dashscope.aliyuncs.com/*"
+  ]
+}

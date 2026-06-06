@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="popup.css" />
+    <title>Lucid Translate</title>
+  </head>
+  <body>
+    <div class="panel">
+      <header class="header">
+        <div class="brand">
+          <span class="logo">译</span>
+          <span class="title">Lucid Translate</span>
+        </div>
+        <button id="settingsBtn" class="icon-btn" title="设置" aria-label="设置">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </header>
+
+      <div id="detectHint" class="detect-hint hidden"></div>
+
+      <div class="lang-row">
+        <div class="lang-field">
+          <label for="sourceLang">原文</label>
+          <select id="sourceLang"></select>
+        </div>
+        <div class="arrow">→</div>
+        <div class="lang-field">
+          <label for="targetLang">译文</label>
+          <select id="targetLang"></select>
+        </div>
+      </div>
+
+      <button id="actionBtn" class="action-btn">翻译此页</button>
+
+      <div id="progress" class="progress hidden">
+        <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+        <div id="progressText" class="progress-text"></div>
+      </div>
+
+      <div id="banner" class="banner hidden"></div>
+    </div>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
