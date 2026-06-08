@@ -23,23 +23,43 @@
   // 每个块的状态记录：el -> { placeholders, originalHTML }
   const blockRecords = new WeakMap();
 
+  // 插件重载/卸载后，残留在旧页面的 content script 与扩展的连接会失效，
+  // 此时 chrome.runtime.sendMessage 会【同步抛错】(Extension context invalidated)，
+  // .catch() 接不住。统一用此包装：try/catch 兜住同步抛错，返回 Promise，永不冒泡。
+  function safeSend(message) {
+    try {
+      // chrome.runtime 可能整个失效，先探一下。
+      if (!chrome.runtime || !chrome.runtime.id) return Promise.resolve(null);
+      return chrome.runtime.sendMessage(message).catch(() => null);
+    } catch (_) {
+      return Promise.resolve(null);
+    }
+  }
+
   // —— 与 background 通信：发送一批待译段落 ——
   function sendBatch(segments) {
     return new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage(
-        {
-          type: "translateBatch",
-          segments,
-          sourceLang: STATE.sourceLang,
-          targetLang: STATE.targetLang,
-        },
-        (resp) => {
-          if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
-          if (!resp) return reject(new Error("no response"));
-          if (!resp.ok) return reject(new Error(resp.error || "translate failed"));
-          resolve(resp.results);
+      try {
+        if (!chrome.runtime || !chrome.runtime.id) {
+          return reject(new Error("Extension context invalidated"));
         }
-      );
+        chrome.runtime.sendMessage(
+          {
+            type: "translateBatch",
+            segments,
+            sourceLang: STATE.sourceLang,
+            targetLang: STATE.targetLang,
+          },
+          (resp) => {
+            if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+            if (!resp) return reject(new Error("no response"));
+            if (!resp.ok) return reject(new Error(resp.error || "translate failed"));
+            resolve(resp.results);
+          }
+        );
+      } catch (err) {
+        reject(err);
+      }
     });
   }
 
@@ -189,9 +209,7 @@
     notifyProgress();
     pushMenuState();
     // 记住"在本站边浏览边翻译"，使同域的整页跳转后续页面自动续翻（本会话内）。
-    chrome.runtime
-      .sendMessage({ type: "siteActive", hostname: location.hostname, active: true })
-      .catch(() => {});
+    safeSend({ type: "siteActive", hostname: location.hostname, active: true });
   }
 
   // —— 还原原文 ——
@@ -219,27 +237,23 @@
     notifyProgress();
     pushMenuState();
     // 明确退出：清除本站续翻标记，后续同域页面不再自动翻译。
-    chrome.runtime
-      .sendMessage({ type: "siteActive", hostname: location.hostname, active: false })
-      .catch(() => {});
+    safeSend({ type: "siteActive", hostname: location.hostname, active: false });
   }
 
   // —— 进度上报（popup 打开时监听）——
   function notifyProgress() {
-    chrome.runtime
-      .sendMessage({
-        type: "progress",
-        active: STATE.active,
-        total: STATE.total,
-        done: STATE.done,
-        failed: STATE.failed,
-      })
-      .catch(() => {}); // popup 未打开时忽略
+    safeSend({
+      type: "progress",
+      active: STATE.active,
+      total: STATE.total,
+      done: STATE.done,
+      failed: STATE.failed,
+    });
   }
 
   // —— 把当前激活状态推给 background，用于同步右键菜单文案（翻译此页 / 还原原文）——
   function pushMenuState() {
-    chrome.runtime.sendMessage({ type: "menuState", active: STATE.active }).catch(() => {});
+    safeSend({ type: "menuState", active: STATE.active });
   }
 
   // —— 供 popup 检测语言用：取样页面可见文本 ——
@@ -257,20 +271,17 @@
   // 启动入口：先看本站是否处于"续翻"状态（同域整页跳转后续页面自动翻译）；
   // 不是则走自动检测弹窗逻辑。
   function onContentStart() {
-    chrome.runtime
-      .sendMessage({ type: "shouldAutoTranslate", hostname: location.hostname })
-      .then((resp) => {
-        if (resp && resp.ok && resp.active) {
-          // 本会话已在此站翻译 → 等首屏渲染后自动续翻，不打扰用户、不弹窗。
-          setTimeout(() => {
-            if (STATE.active) return;
-            startTranslation(resp.settings || {});
-          }, 400);
-        } else {
-          maybeOfferTranslation();
-        }
-      })
-      .catch(() => maybeOfferTranslation());
+    safeSend({ type: "shouldAutoTranslate", hostname: location.hostname }).then((resp) => {
+      if (resp && resp.ok && resp.active) {
+        // 本会话已在此站翻译 → 等首屏渲染后自动续翻，不打扰用户、不弹窗。
+        setTimeout(() => {
+          if (STATE.active) return;
+          startTranslation(resp.settings || {});
+        }, 400);
+      } else {
+        maybeOfferTranslation();
+      }
+    });
   }
 
   // 启动后稍延迟取样，请求 background 决策是否弹窗。
@@ -280,18 +291,15 @@
       if (STATE.active || toastHost) return;
       const sample = sampleText();
       if (!sample) return;
-      chrome.runtime
-        .sendMessage({ type: "autoOffer", sample, hostname: location.hostname })
-        .then((resp) => {
-          if (resp && resp.ok && resp.offer && !STATE.active && !toastHost) {
-            // 记下用于翻译的设置，点击「翻译」时直接用。
-            STATE.offerSource = resp.sourceLang;
-            STATE.offerTarget = resp.targetLang;
-            STATE.offerMode = resp.displayMode;
-            showToast(resp.langName || "");
-          }
-        })
-        .catch(() => {});
+      safeSend({ type: "autoOffer", sample, hostname: location.hostname }).then((resp) => {
+        if (resp && resp.ok && resp.offer && !STATE.active && !toastHost) {
+          // 记下用于翻译的设置，点击「翻译」时直接用。
+          STATE.offerSource = resp.sourceLang;
+          STATE.offerTarget = resp.targetLang;
+          STATE.offerMode = resp.displayMode;
+          showToast(resp.langName || "");
+        }
+      });
     }, 600); // 等 SPA 首屏渲染
   }
 
@@ -321,9 +329,7 @@
     shadow.querySelector(".lt-toast-close").addEventListener("click", () => {
       removeToast();
       // 用户主动关闭 → 该站永久不再自动提示。
-      chrome.runtime
-        .sendMessage({ type: "dismissOffer", hostname: location.hostname })
-        .catch(() => {});
+      safeSend({ type: "dismissOffer", hostname: location.hostname });
     });
 
     // ~8 秒无操作自动淡出（不写黑名单，下次仍礼貌再问）。
