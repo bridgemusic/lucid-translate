@@ -4,16 +4,23 @@ import assert from "node:assert/strict";
 
 // background.js 在模块顶层注册监听器并调用 createMenu()，需先把它用到的 chrome API 桩好。
 const noop = () => {};
+const sessionStore = {};
 globalThis.chrome = {
   runtime: { onMessage: { addListener: noop }, onInstalled: { addListener: noop } },
   contextMenus: { removeAll: (cb) => cb && cb(), create: noop, update: noop, onClicked: { addListener: noop } },
   tabs: { onActivated: { addListener: noop }, onUpdated: { addListener: noop }, sendMessage: noop },
   i18n: { detectLanguage: async () => ({ languages: [] }) },
   scripting: {},
-  storage: { local: { get: async () => ({}), set: async () => {} } },
+  storage: {
+    local: { get: async () => ({}), set: async () => {} },
+    session: {
+      get: async (key) => (key in sessionStore ? { [key]: sessionStore[key] } : {}),
+      set: async (patch) => Object.assign(sessionStore, patch),
+    },
+  },
 };
 
-const { decideOffer } = await import("../background.js");
+const { decideOffer, setSiteActive, isSiteActive } = await import("../background.js");
 
 const base = {
   detectedLang: "en",
@@ -60,4 +67,24 @@ test("占比过低（<50%）→ 不弹", () => {
 
 test("检测语言归一：en-US 视为 en", () => {
   assert.equal(decideOffer({ ...base, detectedLang: "en-US" }).offer, true);
+});
+
+// —— 本会话续翻名单（同域整页跳转后自动续翻）——
+test("setSiteActive/isSiteActive：标记后命中，忽略 www", async () => {
+  assert.equal(await isSiteActive("scmp.com"), false);
+  await setSiteActive("www.scmp.com", true);
+  assert.equal(await isSiteActive("scmp.com"), true, "整页跳转后同域应续翻");
+  assert.equal(await isSiteActive("www.scmp.com"), true);
+});
+
+test("setSiteActive(false)：还原后清除，停止续翻", async () => {
+  await setSiteActive("foo.com", true);
+  assert.equal(await isSiteActive("foo.com"), true);
+  await setSiteActive("foo.com", false);
+  assert.equal(await isSiteActive("foo.com"), false, "点还原后该站不再续翻");
+});
+
+test("续翻仅限同域：未标记的别站不续翻", async () => {
+  await setSiteActive("a.com", true);
+  assert.equal(await isSiteActive("b.com"), false, "跳到别的网站不应自动翻译");
 });

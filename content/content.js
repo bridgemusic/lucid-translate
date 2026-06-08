@@ -188,6 +188,10 @@
     removeToast(); // 已进入翻译，撤掉自动提示弹窗（若有）
     notifyProgress();
     pushMenuState();
+    // 记住"在本站边浏览边翻译"，使同域的整页跳转后续页面自动续翻（本会话内）。
+    chrome.runtime
+      .sendMessage({ type: "siteActive", hostname: location.hostname, active: true })
+      .catch(() => {});
   }
 
   // —— 还原原文 ——
@@ -214,6 +218,10 @@
     observers = null;
     notifyProgress();
     pushMenuState();
+    // 明确退出：清除本站续翻标记，后续同域页面不再自动翻译。
+    chrome.runtime
+      .sendMessage({ type: "siteActive", hostname: location.hostname, active: false })
+      .catch(() => {});
   }
 
   // —— 进度上报（popup 打开时监听）——
@@ -245,6 +253,25 @@
   // ============================================================
   let toastHost = null;
   let toastTimer = null;
+
+  // 启动入口：先看本站是否处于"续翻"状态（同域整页跳转后续页面自动翻译）；
+  // 不是则走自动检测弹窗逻辑。
+  function onContentStart() {
+    chrome.runtime
+      .sendMessage({ type: "shouldAutoTranslate", hostname: location.hostname })
+      .then((resp) => {
+        if (resp && resp.ok && resp.active) {
+          // 本会话已在此站翻译 → 等首屏渲染后自动续翻，不打扰用户、不弹窗。
+          setTimeout(() => {
+            if (STATE.active) return;
+            startTranslation(resp.settings || {});
+          }, 400);
+        } else {
+          maybeOfferTranslation();
+        }
+      })
+      .catch(() => maybeOfferTranslation());
+  }
 
   // 启动后稍延迟取样，请求 background 决策是否弹窗。
   function maybeOfferTranslation() {
@@ -418,6 +445,6 @@
     }
   });
 
-  // 启动：请求 background 决策是否自动弹窗提示。
-  maybeOfferTranslation();
+  // 启动：先判断本站是否续翻（同域跳转后自动翻译），否则走自动检测弹窗。
+  onContentStart();
 })();

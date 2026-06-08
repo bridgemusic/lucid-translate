@@ -2,7 +2,13 @@
 // API key 只在这里读取，绝不下发到页面世界（content script）。
 
 import { translate, testConnection } from "./lib/providers.js";
-import { getActiveProviderConfig, getSettings, addToBlocklist, hostInList } from "./lib/storage.js";
+import {
+  getActiveProviderConfig,
+  getSettings,
+  addToBlocklist,
+  hostInList,
+  normalizeHostname,
+} from "./lib/storage.js";
 import { normalizeDetected, displayName } from "./lib/languages.js";
 
 const MENU_ID = "lt-toggle";
@@ -37,10 +43,62 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ ok: true });
       return;
 
+    case "siteActive":
+      // content 翻译开始/还原时上报，维护"本会话续翻域名"集合（活过整页跳转）。
+      setSiteActive(msg.hostname, msg.active).finally(() => sendResponse({ ok: true }));
+      return true;
+
+    case "shouldAutoTranslate":
+      // 新页面加载时查询：该域名是否在本会话续翻名单里。是则一并带回翻译设置。
+      handleShouldAutoTranslate(msg, sendResponse);
+      return true;
+
     default:
       return;
   }
 });
+
+// —— 本会话续翻名单（chrome.storage.session：活过整页跳转，关浏览器即清空）——
+const SITES_KEY = "activeSites";
+
+export async function setSiteActive(hostname, active) {
+  const h = normalizeHostname(hostname);
+  if (!h) return;
+  const { [SITES_KEY]: sites = {} } = await chrome.storage.session.get(SITES_KEY);
+  if (active) sites[h] = true;
+  else delete sites[h];
+  await chrome.storage.session.set({ [SITES_KEY]: sites });
+}
+
+export async function isSiteActive(hostname) {
+  const h = normalizeHostname(hostname);
+  if (!h) return false;
+  const { [SITES_KEY]: sites = {} } = await chrome.storage.session.get(SITES_KEY);
+  return !!sites[h];
+}
+
+async function handleShouldAutoTranslate(msg, sendResponse) {
+  try {
+    const active = await isSiteActive(msg.hostname);
+    if (!active) {
+      sendResponse({ ok: true, active: false });
+      return;
+    }
+    // 续翻时带回用户当前翻译设置，保证语言/呈现模式与手动翻译一致。
+    const s = await getSettings();
+    sendResponse({
+      ok: true,
+      active: true,
+      settings: {
+        sourceLang: s.sourceLang,
+        targetLang: s.targetLang,
+        displayMode: s.displayMode,
+      },
+    });
+  } catch (_) {
+    sendResponse({ ok: true, active: false });
+  }
+}
 
 async function handleTranslateBatch(msg, sendResponse) {
   try {
